@@ -1,0 +1,12 @@
+name: wikipedia_crawl
+channels:
+    - bokeh
+    - memex
+dependencies:
+#    - elasticnutch=1.11-snapshot
+    - bokeh=0.10.0
+    - python=2.7.8
+    - pytest
+    - pip:
+        - kombu
+        - supervisor
