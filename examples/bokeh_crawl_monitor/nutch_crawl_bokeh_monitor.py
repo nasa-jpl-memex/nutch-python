@@ -175,24 +175,19 @@ class NutchUrlTrails:
             circle_urls = [circle_urls[i] for i in circle_sort_index]
 
         # Filter to latest num_url URLs (ascending order)
-        min_x = min(x0[:self.num_urls])
-        max_x = max(x)
-        x_range = Range1d(min_x, max_x)
-
-        active_min = x0.searchsorted(min_x)
-        active_max = x.searchsorted(max_x, side='right')
-
         # filter segments
-        active_x0 = x0[active_min:active_max]
-        active_x = x[active_min:active_max]
-        active_urls = urls[active_min:active_max]
+        active_x0 = x0[:self.num_urls]
+        active_x = x[:self.num_urls]
+        active_urls = urls[:self.num_urls]
+
+        min_x = min(active_x0)
+        max_x = max(active_x)
+        x_range = Range1d(min_x, max_x)
 
         # filter circles (some of these might not be displayed)
         if self.closed_urls:
-            active_circle_min = circles.searchsorted(min_x)
-            active_circle_max = circles.searchsorted(max_x, side='right')
-            active_circles = circles[active_circle_min:active_circle_max]
-            active_circle_urls = circle_urls[active_circle_min:active_circle_max]
+            active_circles = circles[:self.num_urls]
+            active_circle_urls = circle_urls[:self.num_urls]
 
         if self.plot is None:
             self.plot = figure(title="Streaming Nutch Plot", tools="pan,wheel_zoom,resize,save,hover", x_range=x_range,
@@ -220,7 +215,7 @@ class NutchUrlTrails:
         cursession().store_objects(self.plot)
 
 
-def main(seed='https://en.wikipedia.org/wiki/Main_Page', rounds=3, num_urls=25):
+def main(seed='https://en.wikipedia.org/wiki/Main_Page', rounds=3, num_urls=5):
     check_supervisord()
     crawl = launch_crawl(seed, rounds)
 
