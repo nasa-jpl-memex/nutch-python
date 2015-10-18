@@ -1,20 +1,18 @@
 from __future__ import division
 from __future__ import print_function
 
+from datetime import datetime
+import json
 import os
 import signal
+import sys
 import time
-from datetime import datetime
 from Queue import Empty
-import json
 
 import numpy as np
-
 from bokeh.models import Range1d
 from bokeh.plotting import cursession, figure, output_server, show
-
 from kombu import Connection
-
 import nutch
 
 def check_supervisord():
@@ -232,9 +230,11 @@ def main(seed='https://en.wikipedia.org/wiki/Main_Page', rounds=3, num_urls=25):
         time.sleep(1)
         crawl.progress()
         url_trails.handle_messages()
-    print("\n\n\nCrawl completed.\nTrying to stop supervisord\n")
+    print("\n\n\nCrawl completed.\n\nTrying to stop supervisord\n")
     term_supervisord()
 
 if __name__ == '__main__':
-    # TODO: expose "seed/seeds" "num_urls", and "rounds" to the command line
-    main()
+    if len(sys.argv) > 1:
+        main(sys.argv[1])
+    else:
+        main()
