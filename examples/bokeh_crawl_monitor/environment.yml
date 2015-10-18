@@ -9,3 +9,4 @@ dependencies:
     - pip:
         - kombu
         - supervisor
+        - git+https://github.com/memex-explorer/nutch-python
