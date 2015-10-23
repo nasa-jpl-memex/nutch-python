@@ -1,0 +1,12 @@
+name: bokeh_stream
+channels:
+    - bokeh
+    - memex
+dependencies:
+    - bokeh=0.10.0
+    - python=2.7.8
+    - pytest
+    - pip:
+        - kombu
+        - supervisor
+        - git+https://github.com/memex-explorer/nutch-python
