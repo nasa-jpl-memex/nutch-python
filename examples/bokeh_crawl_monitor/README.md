@@ -2,10 +2,9 @@ Example of using the Nutch REST API, a RabbitMQ message broker, and Bokeh server
 
 # INSTALLATION
 
-Nutch and RabbitMQ need to be installed separately.
+RabbitMQ needs to be installed separately.
 
 RabbitMQ >= 3.5 is recommended
-Nutch 1.11 (or svn>1707174) is required with patch https://issues.apache.org/jira/browse/NUTCH-2132
 
 The rest of the requirements can be installed via conda env, which requires that Anaconda or Miniconda is installed. Miniconda is a minimal Anaconda installation that bootstraps conda and Python on any operating system. Install Anaconda from http://continuum.io/downloads or Miniconda from http://conda.pydata.org/miniconda.html
 
