@@ -12,8 +12,9 @@ from Queue import Empty
 import numpy as np
 from bokeh.models import Range1d
 from bokeh.plotting import cursession, figure, output_server, show
-from kombu import Connection
+from kombu import Connection, Queue, Exchange
 import nutch
+
 
 def check_supervisord():
     """
@@ -23,6 +24,7 @@ def check_supervisord():
     supervisor_pidfile = os.path.join(os.path.dirname(location), 'supervisord.pid')
     if not os.path.exists(supervisor_pidfile):
         raise Exception("No supervisor.pid file found, is supervisord running?")
+
 
 def term_supervisord():
     """
@@ -38,7 +40,24 @@ def term_supervisord():
         os.kill(pid, signal.SIGTERM)
         print("Sent termination signal to supervisor daemon at {}\n".format(pid))
 
-def launch_crawl(seed_url, rounds):
+
+def ensure_streaming(exchange_name="nutch_fetch_stream", crawl_name="bokeh_crawl"):
+    """
+    Use the Nutch RESTful interface to ensure Nutch is configured for streaming
+    :param exchange_name: The name of the crawl
+    """
+
+    n = nutch.Nutch()
+    c = n.Configs()
+    c['default']['fetcher.publisher'] = 'true'
+    c['default']['publisher.queue.type'] = 'rabbitmq'
+    assert exchange_name == c['default'].info()['rabbitmq.exchange.server']
+    c['default']['rabbitmq.exchange.type'] = 'direct'
+    c['default']['rabbitmq.queue.routingkey'] = crawl_name
+    print("Set up streaming exchange on {}\n".format(exchange_name))
+
+
+def launch_crawl(seed_url, rounds, crawl_name="bokeh_crawl"):
     """
     Use the Nutch RESTful interface to launch a crawl
     :param seed_url: The URL to start from
@@ -46,10 +65,22 @@ def launch_crawl(seed_url, rounds):
     :return: The nutch.CrawlClient corresponding to this crawl
     """
     n = nutch.Nutch()
+    c = n.Configs()
+
+    streaming_overrides = {'fetcher.publisher':'true',
+                           'publisher.queue.type': 'rabbitmq',
+                           'rabbitmq.exchange.type': 'direct',
+                           'rabbitmq.queue.routingkey': crawl_name}
+
+    config_name = 'config_streaming_' + crawl_name
+    c[config_name] = streaming_overrides
+
+    n = nutch.Nutch(confId=config_name)
     sc = n.Seeds()
     seed_urls = [seed_url]
     seed = sc.create('restful_stream_viz_crawl_seed', seed_urls)
-    return n.Crawl(seed, rounds=rounds)
+    jc = n.Jobs(crawl_name)
+    return n.Crawl(seed, rounds=rounds, jobClient=jc)
 
 
 class NutchUrlTrails:
@@ -65,7 +96,7 @@ class NutchUrlTrails:
         :return: The stripped URL
         """
         # TODO: remove protocol-stripping on next Bokeh release
-        return url.replace('https://', '').replace('http://', '').replace(':', '_').replace('-', '_')[:250]
+        return url.replace('https://', '').replace('http://', '').replace(':', '_').replace('-', '_')[:50]
 
     @staticmethod
     def jtime_to_datetime(t):
@@ -76,7 +107,7 @@ class NutchUrlTrails:
         """
         return np.datetime64(datetime.fromtimestamp(t/1000.0))
 
-    def __init__(self, num_urls=25):
+    def __init__(self, num_urls=25, exchange_name="fetcher_log", crawl_name="bokeh_crawl"):
         """
         Create a NutchUrlTrails instance for visualizing a running Nutch crawl in real-time using Bokeh
         :param num_urls: The number of URLs to display in the visualization
@@ -89,10 +120,13 @@ class NutchUrlTrails:
         self.old_circles = None
         self.plot = None
         self.show_plot = True
+        self.crawl_name = crawl_name
         con = Connection()
-        # TODO: consider exposing this
-        self.queue = con.SimpleQueue(name='fetcher_log', exchange_opts={'durable': False})
-        output_server("Streaming Nutch Plot")
+
+        exchange = Exchange(exchange_name, 'direct', durable=False)
+        queue = Queue(crawl_name, exchange=exchange, routing_key=crawl_name)
+        self.queue = con.SimpleQueue(name=queue)
+        output_server(crawl_name)
 
     def handle_messages(self):
         """
@@ -118,8 +152,9 @@ class NutchUrlTrails:
         if message["eventType"] == "START":
             self.open_urls[url] = NutchUrlTrails.jtime_to_datetime(message["timestamp"])
         elif message["eventType"] == "END":
-            self.closed_urls[url] = (self.open_urls[url], NutchUrlTrails.jtime_to_datetime(message["timestamp"]))
-            del self.open_urls[url]
+            if url in self.open_urls:
+                self.closed_urls[url] = (self.open_urls[url], NutchUrlTrails.jtime_to_datetime(message["timestamp"]))
+                del self.open_urls[url]
         else:
             raise Exception("Unexpected message type")
 
@@ -190,8 +225,11 @@ class NutchUrlTrails:
             active_circle_urls = circle_urls[:self.num_urls]
 
         if self.plot is None:
-            self.plot = figure(title="Streaming Nutch Plot", tools="pan,wheel_zoom,resize,save,hover", x_range=x_range,
-                               y_range=active_urls, x_axis_type="datetime", width=1200, height=600)
+            self.plot = figure(title=self.crawl_name, tools="hover", x_range=x_range,
+                               y_range=active_urls, x_axis_type="datetime", y_axis_location="right", width=800, height=600)
+            self.plot.toolbar_location = None
+            self.plot.xgrid.grid_line_color = None
+
         else:
             self.plot.x_range.start = min_x
             self.plot.x_range.end = max_x
@@ -215,21 +253,27 @@ class NutchUrlTrails:
         cursession().store_objects(self.plot)
 
 
-def main(seed='https://en.wikipedia.org/wiki/Main_Page', rounds=3, num_urls=5):
+def main(crawl_name="bokeh_crawl", seed='https://en.wikipedia.org/wiki/Main_Page', rounds=2, num_urls=5):
+    exchange_name = "fetcher_log"
     check_supervisord()
-    crawl = launch_crawl(seed, rounds)
 
-    url_trails = NutchUrlTrails(num_urls)
+    ensure_streaming(exchange_name, crawl_name)
+
+    crawl = launch_crawl(seed, rounds, crawl_name)
+
+    url_trails = NutchUrlTrails(num_urls, exchange_name, crawl_name)
 
     while crawl.progress():
-        time.sleep(1)
+        time.sleep(0.2)
         crawl.progress()
         url_trails.handle_messages()
     print("\n\n\nCrawl completed.\n\nTrying to stop supervisord\n")
-    term_supervisord()
+    #term_supervisord()
 
 if __name__ == '__main__':
-    if len(sys.argv) > 1:
+    if len(sys.argv) == 2:
         main(sys.argv[1])
+    elif len(sys.argv) == 3:
+        main(sys.argv[1], sys.argv[2])
     else:
         main()
