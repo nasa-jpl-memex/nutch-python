@@ -6,7 +6,7 @@ source:
 #  fn: nutch-1.10.3.tar.gz
 #  url: https://pypi.python.org/packages/source/n/nutch/nutch-1.10.3.tar.gz
 #  md5: e52e92aac4162d4f8ddb8d8bffa44bd3
-  git_rev: 'ad22227c68b0fde381d4b0d1c80fc4692671bd06'
+  git_rev: '0bfad68da8118102a0e17702482737c2592c580a'
   git_url: https://github.com/memex-explorer/nutch-python.git
 
   #  patches:
@@ -28,7 +28,7 @@ build:
 
   # If this is a new build for the same version, increment the build
   # number. If you do not include this key, it defaults to 0.
-  # number: 1
+  number: 1
 
 requirements:
   build:
