@@ -424,6 +424,11 @@ class JobClient:
         statsArgs = {'confId': self.confId, 'crawlId': self.crawlId, 'type': 'stats', 'args': {}}
         return self.server.call('post', '/db/crawldb', statsArgs)
 
+    def commoncrawldump(self, optional_args=None):
+        optional_args = optional_args if optional_args else {}
+        dumpArgs = {'confId': self.confId, 'crawlId': self.crawlId, 'args': optional_args}
+        return self.server.call('post', '/services/commoncrawldump', dumpArgs, TextAcceptHeader)
+
 
 class SeedClient():
 
@@ -473,6 +478,7 @@ class SeedClient():
                     urls.append(url)
 
         return self.create(sid, tuple(urls))
+
 
 class CrawlClient():
     def __init__(self, server, seed, jobClient, rounds, index):

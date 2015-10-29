@@ -193,4 +193,5 @@ def test_crawl_client():
     jobs = rounds[0]
     # check crawl info
     assert(type(cc.jobClient.stats()['status']) == dict)
+    assert(type(cc.jobClient.commoncrawldump()) == str)
     assert all([j.info()['state'] == 'FINISHED' for j in jobs])
