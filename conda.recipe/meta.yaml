@@ -1,12 +1,15 @@
 package:
   name: nutch-python
-  version: "1.10.3"
+  version: "1.11"
 
 source:
-  fn: nutch-1.10.3.tar.gz
-  url: https://pypi.python.org/packages/source/n/nutch/nutch-1.10.3.tar.gz
-  md5: e52e92aac4162d4f8ddb8d8bffa44bd3
-#  patches:
+#  fn: nutch-1.10.3.tar.gz
+#  url: https://pypi.python.org/packages/source/n/nutch/nutch-1.10.3.tar.gz
+#  md5: e52e92aac4162d4f8ddb8d8bffa44bd3
+  git_rev: 'ad22227c68b0fde381d4b0d1c80fc4692671bd06'
+  git_url: https://github.com/memex-explorer/nutch-python.git
+
+  #  patches:
    # List any patch files here
    # - fix.patch
 
